@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Horror 3D Maze – Mexican Flag</title>
+<style>
+  body {
+    margin: 0;
+    background: black;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+  }
+  canvas {
+    image-rendering: pixelated;
+    width: 640px;
+    height: 480px;
+    border: 4px solid #111;
+    background: black;
+  }
+</style>
+</head>
+<body>
+<canvas id="game" width="160" height="120"></canvas>
+
+<script>
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+const W = canvas.width;
+const H = canvas.height;
+
+// 1 = wall, 0 = floor, 2 = flag/exit
+const map = [
+  [1,1,1,1,1,1,1,1,1,1,1,1],
+  [1,0,0,0,0,0,0,0,0,0,2,1],
+  [1,0,1,1,1,0,1,1,1,0,0,1],
+  [1,0,1,0,0,0,0,0,1,0,0,1],
+  [1,0,1,0,1,1,1,0,1,0,0,1],
+  [1,0,0,0,0,0,1,0,0,0,0,1],
+  [1,0,1,1,1,0,1,1,1,1,0,1],
+  [1,0,0,0,1,0,0,0,0,1,0,1],
+  [1,0,1,0,1,1,1,1,0,1,0,1],
+  [1,0,0,0,0,0,0,0,0,0,0,1],
+  [1,1,1,1,1,1,1,1,1,1,1,1]
+];
+
+let px = 2.5, py = 2.5;
+let pa = 0;
+const FOV = Math.PI / 3;
+let keys = {};
+let escaped = false;
+
+document.addEventListener("keydown", e => keys[e.key.toLowerCase()] = true);
+document.addEventListener("keyup",   e => keys[e.key.toLowerCase()] = false);
+
+function isWall(x, y) {
+  const mx = Math.floor(x);
+  const my = Math.floor(y);
+  if (mx < 0 || my < 0 || mx >= map[0].length || my >= map.length) return true;
+  return map[my][mx] === 1;
+}
+
+function isFlag(x, y) {
+  const mx = Math.floor(x);
+  const my = Math.floor(y);
+  if (mx < 0 || my < 0 || mx >= map[0].length || my >= map.length) return false;
+  return map[my][mx] === 2;
+}
+
+function updatePlayer() {
+  if (escaped) return;
+
+  if (keys["a"]) pa -= 0.05;
+  if (keys["d"]) pa += 0.05;
+
+  let nx = px;
+  let ny = py;
+
+  if (keys["w"]) {
+    nx += Math.cos(pa) * 0.05;
+    ny += Math.sin(pa) * 0.05;
