@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Low-Quality Horror Maze</title>
+  <style>
+    body {
+      margin: 0;
+      background: black;
+      color: #ccc;
+      font-family: monospace;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    #game-container {
+      margin-top: 10px;
+      border: 4px solid #444;
+      image-rendering: pixelated;
+    }
+
+    #info {
+      font-size: 12px;
+      text-align: center;
+      margin-top: 4px;
+      color: #777;
+    }
+
+    #title {
+      color: #b00;
+      text-shadow: 0 0 4px #f00;
+      margin-top: 6px;
+      font-size: 18px;
+      letter-spacing: 2px;
+    }
+  </style>
+</head>
+<body>
+  <div id="title">PS2 HORROR: UNDERGROUND MAZE</div>
+  <canvas id="game-container" width="320" height="240"></canvas>
+  <div id="info">
+    Use arrow keys or WASD to move.<br>
+    Avoid the rappers. Find the exit (E). Low-res on purpose.
+  </div>
+
+  <script>
+    const canvas = document.getElementById('game-container');
+    const ctx = canvas.getContext('2d');
+
+    const TILE_SIZE = 16;
+    const COLS = Math.floor(canvas.width / TILE_SIZE);
+    const ROWS = Math.floor(canvas.height / TILE_SIZE);
+
+    // Simple maze layout (0 = floor, 1 = wall, 2 = exit)
+    const maze = [
+      "11111111111111111111",
+      "1P000000001000000001",
+      "10111101110101111001",
+      "10000100000100001001",
+      "10110111110111001001",
+      "10010000000100001001",
+      "10110101110101101001",
+      "10000100000100001001",
+      "10111101110101111001",
+      "100000000000000000E1",
+      "11111111111111111111"
+    ];
+
+    // Player and enemies
+    let player = { x: 1, y: 1 };
+    const enemies = [
+      { x: 10, y: 2, dir: 1, name: "Bleak" },
+      { x: 15, y: 7, dir: -1, name: "Sludge" }
+    ];
+
+    let gameOver = false;
+    let win = false;
+
+    function drawPS2Background() {
+      // Fake PS2-style noisy gradient
+      const imgData = ctx.createImageData(canvas.width, canvas.height);
+      for (let i = 0; i < imgData.data.length; i += 4) {
+        const shade = 5 + Math.random() * 20;
+        imgData.data[i] = shade;
+        imgData.data[i + 1] = shade;
+        imgData.data[i + 2] = shade + Math.random() * 10;
+        imgData.data[i + 3] = 255;
+      }
+      ctx.putImageData(imgData, 0, 0);
+    }
+
+    function drawMaze() {
+      for (let y = 0; y < ROWS; y++) {
+        for (let x = 0; x < COLS; x++) {
+          const tile = maze[y][x];
+          if (tile === "1") {
+            ctx.fillStyle = "#222";
+            ctx.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+            ctx.strokeStyle = "#333";
+            ctx.strokeRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+          } else if (tile === "E") {
+            ctx.fillStyle = "#0a0";
+            ctx.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+            ctx.fillStyle = "#030";
+            ctx.fillRect(x * TILE_SIZE + 4, y * TILE_SIZE + 4, TILE_SIZE - 8, TILE_SIZE - 8);
+          } else {
+            // floor
+            ctx.fillStyle = "rgba(10,10,10,0.7)";
+            ctx.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+          }
+        }
+      }
+    }
+
+    function drawPlayer() {
+      ctx.fillStyle = "#ccc";
+      ctx.fillRect(player.x * TILE_SIZE + 3, player.y * TILE_SIZE + 3, TILE_SIZE - 6, TILE_SIZE - 6);
+      ctx.fillStyle = "#000";
+      ctx.fillRect(player.x * TILE_SIZE + 6, player.y * TILE_SIZE + 7, 3, 3);
+      ctx.fillRect(player.x * TILE_SIZE + TILE_SIZE - 9, player.y * TILE_SIZE + 7, 3, 3);
+    }
+
+    function drawEnemies() {
+      enemies.forEach(e => {
+        ctx.fillStyle = "#800";
+        ctx.fillRect(e.x * TILE_SIZE + 2, e.y * TILE_SIZE + 2, TILE_SIZE - 4, TILE_SIZE - 4);
+        ctx.fillStyle = "#300";
+        ctx.fillRect(e.x * TILE_SIZE + 4, e.y * TILE_SIZE + 4, TILE_SIZE - 8, TILE_SIZE - 8);
+        ctx.fillStyle = "#f00";
+        ctx.fillRect(e.x * TILE_SIZE + 6, e.y * TILE_SIZE + 6, 2, 2);
+        ctx.fillRect(e.x * TILE_SIZE + TILE_SIZE - 8, e.y * TILE_SIZE + 6, 2, 2);
+      });
+    }
+
+    function isWall(x, y) {
+      if (y < 0 || y >= maze.length || x < 0 || x >= maze[0].length) return true;
+      return maze[y][x] === "1";
+    }
+
+    function isExit(x, y) {
+      return maze[y][x] === "E";
+    }
+
+    function movePlayer(dx, dy) {
+      if (gameOver || win) return;
+      const nx = player.x + dx;
+      const ny = player.y + dy;
+      if (!isWall(nx, ny)) {
+        player.x = nx;
+        player.y = ny;
+        if (isExit(nx, ny)) {
+          win = true;
+        }
+      }
+    }
+
+    function moveEnemies() {
+      enemies.forEach(e => {
+        const nx = e.x + e.dir;
+        if (isWall(nx, e.y)) {
+          e.dir *= -1;
+        } else {
+          e.x = nx;
+        }
+      });
+    }
+
+    function checkCollisions() {
+      enemies.forEach(e => {
+        if (e.x === player.x && e.y === player.y) {
+          gameOver = true;
+        }
+      });
+    }
+
+    function drawOverlayText(text, color) {
+      ctx.fillStyle = "rgba(0,0,0,0.7)";
+      ctx.fillRect(0, canvas.height / 2 - 20, canvas.width, 40);
+      ctx.fillStyle = color;
+      ctx.font = "16px monospace";
+      ctx.textAlign = "center";
+      ctx.fillText(text, canvas.width / 2, canvas.height / 2 + 5);
+    }
+
+    function gameLoop() {
+      drawPS2Background();
+      drawMaze();
+      drawEnemies();
+      drawPlayer();
+      checkCollisions();
+
+      if (gameOver) {
+        drawOverlayText("YOU GOT CAUGHT BY THE UNDERGROUND", "#f00");
+      } else if (win) {
+        drawOverlayText("YOU ESCAPED THE MAZE", "#0f0");
+      } else {
+        moveEnemies();
+      }
+
+      requestAnimationFrame(gameLoop);
+    }
+
+    window.addEventListener('keydown', (e) => {
+      if (e.key === "ArrowUp" || e.key === "w") movePlayer(0, -1);
+      if (e.key === "ArrowDown" || e.key === "s") movePlayer(0, 1);
+      if (e.key === "ArrowLeft" || e.key === "a") movePlayer(-1, 0);
+      if (e.key === "ArrowRight" || e.key === "d") movePlayer(1, 0);
+    });
+
+    gameLoop();
+  </script>
+</body>
+</html>
